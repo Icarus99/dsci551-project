@@ -1,4 +1,5 @@
 # from _typeshed import FileDescriptor
+from typing_extensions import runtime
 import requests
 import csv
 import json
@@ -70,10 +71,17 @@ class EDFS_SIMULATOR(object):
             for i in req.keys():
                 print(i)
 
+# TO allow jupyter notebook to process large data input/output/transit, when open jupyter in terminal, 
+# run: jupyter notebook --NotebookApp.iopub_data_rate_limit=1.0e10
 
+
+# TEST put, getPartitionLocations, readPartition, run following command:
+# edfs.put('Salary_Dataset.csv', '/user/jack', 3)
+# edfs.getPartitionLocations('/user/jack/Salary_Dataset')
+# edfs.readPartition('/user/jack/Salary_Dataset', 1)
     def put(self, fileName, dir, numPartitions, method=''):
         filePath = '/' + fileName
-        jsonName = filePath.replace("csv", "json")
+        fileNameNoCSV = filePath.replace('.csv', '')
 
         if dir == '':
             path = self.current_dir
@@ -92,26 +100,44 @@ class EDFS_SIMULATOR(object):
 
             for i in range(0, len(list_chunked)):
                 data = json.dumps(list_chunked[i])
-                random_key = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(100)) #generate an unique key for different parts
-                dataPath = self.url_data + dir + jsonName + '/' + random_key + '.json'
-                filesystemPath = self.url_filesystem + dir + jsonName + '/' + f'{i}' + '.json'
+                random_key = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(5)) #generate an unique key for different parts
+                print(random_key)
+                dataPath = self.url_data + dir + fileNameNoCSV + '/' + random_key + '.json'
+                filesystemPath = self.url_filesystem + dir + fileNameNoCSV + '/' + f'{i}' + '.json'
+                print(dataPath)
+                print(filesystemPath)
                 requests.put(dataPath, data)
-                requests.put(filesystemPath, dataPath)
+                requests.put(filesystemPath, json.dumps(dataPath))
+                print(i)
+                print("/n")
+            print('finished')
         return
 
 
     def getPartitionLocations(self, filePath):
         filesystemPath = self.url_filesystem + filePath + '.json'
+        print(filesystemPath)
         result = requests.get(filesystemPath)
+        for ele in result.json():
+            print(ele)
         print(result)
         return
     
     def readPartition(self, filePath, partitionNum):
+        #if user want the first partition, then the number 1 is fine, because the index 1 is the first partition
         filesystemPath = self.url_filesystem + filePath + '/' + f'{partitionNum}' + '.json'
+        print(filesystemPath)
         url_result = requests.get(filesystemPath)
-        print(url_result)
-        result = requests.get(url_result)
-        print(result)
+        print(url_result.json())
+        # for ele in url_result.json():
+        #     print(ele)
+        result = requests.get(str(url_result.json()))
+        print(result.json())
+        # for item in result.json():
+        #     print(item)
+        # print(result)
         return
 
-            
+# edfs = EDFS_SIMULATOR()
+# edfs.readPartition('/user/jack/Salary_Dataset', 1)
+
