@@ -149,8 +149,8 @@ class EDFS_SIMULATOR(object):
         result = requests.get(filesystemPath)
         for ele in result.json():
             print(ele)
-        print(result)
-        return
+        # print(result)
+        return result.json()
     
     def readPartition(self, filePath, partitionNum):
         #if user want the first partition, then the number 1 is fine, because the index 1 is the first partition
@@ -167,7 +167,42 @@ class EDFS_SIMULATOR(object):
         # print(result)
         return
 
+#------------------------   Task2   --------------------------
+    def mapPartition(self, p, func, args=[]):
+        partition = requests.get(p).json()
+        if(len(args)>0):
+            return func(partition, args)
+        return func(partition)
 
+    def reduce(self, partitions, func):
+        return func(partitions)
+
+    #database search functions
+    def __get_avg_salary(self, p, args):
+        p = pd.DataFrame.from_dict(p)
+        title_df = p[p["Job Title"] == args[0]]
+        return len(title_df.index),title_df["Salary"].sum()
+
+    #reduce functions
+    def __reduce_avg_salary(self, partitions):
+        l = 0
+        total = 0
+        for i in partitions:
+            l+=i[0]
+            total+=i[1]
+        return total/l
+
+
+    #search functions
+    def get_avg_salary(self, filePath, title):
+        locations = self.getPartitionLocations(filePath)
+        partitions = []
+        for p in locations:
+        #     print(p)
+            partitions.append(self.mapPartition(p, self.__get_avg_salary, [title]))
+        result = self.reduce(partitions, self.__reduce_avg_salary)
+        print(f'{title} avg salary: {result}')
+        
 
 
 
