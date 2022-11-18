@@ -203,6 +203,21 @@ class EDFS_SIMULATOR(object):
         result = self.reduce(partitions, self.__reduce_avg_salary)
         print(f'{title} avg salary: {result}')
         
+#------------------------   Task3   --------------------------
+    def cd(self, dir):
+        if(dir=='../'):
+            if(self.current_dir==''):
+                print(f'cd: {dir}: No such directory')
+            else:
+                self.current_dir = self.current_dir[:len(self.current_dir)-len(self.current_dir.split('/')[-1])-1]
+        elif('/' in dir):
+            print('usage: do not contain '/'')
+        else:
+            if(requests.get(self.url_filesystem + '/' + self.current_dir + '/' + dir  + '.json').json() == None):
+                print(f'cd: {dir}: No such directory')
+            else:
+                self.current_dir = self.current_dir + '/' + dir
+
 
 
 
