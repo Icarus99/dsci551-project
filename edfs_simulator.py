@@ -147,8 +147,8 @@ class EDFS_SIMULATOR(object):
         filesystemPath = self.url_filesystem + filePath + '.json'
         # print(filesystemPath)
         result = requests.get(filesystemPath)
-        for ele in result.json():
-            print(ele)
+        # for ele in result.json():
+        #     print(ele)
         # print(result)
         return result.json()
     
@@ -178,6 +178,12 @@ class EDFS_SIMULATOR(object):
         return func(partitions)
 
     #database search functions
+    def __get_job_with_salary(self, p, args):
+        p = pd.DataFrame.from_dict(p)
+        df = p[(p["Salary"] >= args[0]) & (p["Salary"] <= args[1])]
+        return df[['Company Name','Job Title','Salary']]
+
+    #database analytics functions
     def __get_avg_salary(self, p, args):
         p = pd.DataFrame.from_dict(p)
         title_df = p[p["Job Title"] == args[0]]
@@ -192,6 +198,12 @@ class EDFS_SIMULATOR(object):
             total+=i[1]
         return total/l
 
+    def __reduce_job_with_salary(self, partitions):
+        r = partitions[0]
+        for i in range(1,len(partitions)):
+            r = r.append(partitions[i], ignore_index = True)
+        return r
+
 
     #search functions
     def get_avg_salary(self, filePath, title):
@@ -199,9 +211,24 @@ class EDFS_SIMULATOR(object):
         partitions = []
         for p in locations:
         #     print(p)
-            partitions.append(self.mapPartition(p, self.__get_avg_salary, [title]))
+            t = self.mapPartition(p, self.__get_avg_salary, [title])
+            if(t[0]>0):
+                print(f'Partition: {p}\n   {title} num: {t[0]} sum: {t[1]} avg: {t[1]/t[0]}')
+            else:
+                print(f'Partition: {p}\n   {title} num: 0 sum: 0 avg: 0')
+            partitions.append(t)
         result = self.reduce(partitions, self.__reduce_avg_salary)
         print(f'{title} avg salary: {result}')
+
+    def get_job_with_salary(self, filePath, mi=0, ma=100000000):
+        locations = self.getPartitionLocations(filePath)
+        partitions = []
+        for p in locations:
+            t = self.mapPartition(p, self.__get_job_with_salary, [mi, ma])
+            print(f'Partition: {p}\n   {t}')
+            partitions.append(t)
+        result = self.reduce(partitions, self.__reduce_job_with_salary)
+        print(result)
         
 #------------------------   Task3   --------------------------
     def cd(self, dir):
