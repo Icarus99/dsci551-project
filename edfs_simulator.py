@@ -20,7 +20,7 @@ class EDFS_SIMULATOR(object):
 
         # if the root is not exists, create one
         if(requests.get(self.url_filesystem + '.json').json() == None):
-            requests.put(self.url_filesystem + '.json', json.dumps('Empty'))
+            requests.put(self.url_filesystem + '.json', json.dumps(' '))
 
     def mkdir(self, dir):
         # check if valid input
@@ -51,7 +51,7 @@ class EDFS_SIMULATOR(object):
             print(f'mkdir: {dir}: File exists')
         else:
             # create dir
-            requests.put(url, json.dumps('Empty'))
+            requests.put(url, json.dumps(' '))
 
     def ls(self, dir=''):
         if dir == '':
@@ -65,7 +65,7 @@ class EDFS_SIMULATOR(object):
 
         if(req == None):
             print(f'ls: {path}: No such file or directory')
-        elif(req == 'Empty'):
+        elif(req == ' '):
             print('')
         ##???
         else:
@@ -76,6 +76,7 @@ class EDFS_SIMULATOR(object):
         fileNameNoCSV = filePath.replace('.csv', '')
         filesystemPath = self.url_filesystem + fileNameNoCSV + '.json'
         datasystemPath = self.url_data + fileNameNoCSV + '.json'
+        parentPath = fileNameNoCSV[:len(fileNameNoCSV) - len(fileNameNoCSV.split('/')[-1]) - 1]
         
         req = requests.get(filesystemPath).json()
         if(req == None):
@@ -85,6 +86,10 @@ class EDFS_SIMULATOR(object):
             requests.delete(filesystemPath)
             #delete partitions
             requests.delete(datasystemPath)
+
+            parentDir = self.url_filesystem + parentPath + '.json'
+            if(requests.get(parentDir).json() == None):
+                requests.put(parentDir, json.dumps(' '))
 
     def cat(self, filePath):
         fileNameNoCSV = filePath.replace('.csv', '')
