@@ -8,6 +8,7 @@ import sys
 import pandas as pd
 import random
 import string
+import math
 
 
 
@@ -125,13 +126,13 @@ class EDFS_SIMULATOR(object):
             path = self.current_dir+ '/' + dir
 
         if method == '':
-            df = pd.read_csv(fileName)
+            df = pd.read_csv(fileName, keep_default_na=False)
             dict = df.to_dict(orient = 'records')#Convert the DataFrame to a dictionary. ‘records’ : list like [{column -> value}, … , {column -> value}] https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.to_dict.html
 
             chunk_size = len(dict) / numPartitions
-            list_chunked = [dict[i:i + int(chunk_size)] for i in range(0, len(dict), int(chunk_size))]
-            # print(dict)
-
+            list_chunked = [dict[i:min([i + int(chunk_size),len(dict)])] for i in range(0, len(dict), math.ceil(chunk_size))]
+            
+    
             for i in range(0, len(list_chunked)):
                 data = json.dumps(list_chunked[i])
                 random_key = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(5)) #generate an unique key for different parts
@@ -140,7 +141,8 @@ class EDFS_SIMULATOR(object):
                 filesystemPath = self.url_filesystem + dir + fileNameNoCSV + '/' + f'{i}' + '.json'
                 # print(dataPath)
                 # print(filesystemPath)
-                requests.put(dataPath, data)
+                r = requests.post(dataPath, data)
+                print(r)
                 requests.put(filesystemPath, json.dumps(dataPath))
                 # print(i)
                 # print("/n")
