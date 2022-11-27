@@ -141,8 +141,8 @@ class EDFS_SIMULATOR(object):
                 filesystemPath = self.url_filesystem + dir + fileNameNoCSV + '/' + f'{i}' + '.json'
                 # print(dataPath)
                 # print(filesystemPath)
-                r = requests.post(dataPath, data)
-                print(r)
+                r = requests.put(dataPath, data)
+                # print(r)
                 requests.put(filesystemPath, json.dumps(dataPath))
                 # print(i)
                 # print("/n")
@@ -189,12 +189,23 @@ class EDFS_SIMULATOR(object):
         p = pd.DataFrame.from_dict(p)
         df = p[(p["Salary"] >= args[0]) & (p["Salary"] <= args[1])]
         return df[['Company Name','Job Title','Salary']]
+ 
+    def __get_people_larger_than_50k(self, p, args):
+        p = pd.DataFrame.from_dict(p)
+        return p[p["income50K"] == 1][args]
 
     #database analytics functions
     def __get_avg_salary(self, p, args):
         p = pd.DataFrame.from_dict(p)
         title_df = p[p["Job Title"] == args[0]]
         return len(title_df.index),title_df["Salary"].sum()
+
+
+
+    def __get_percent_50k(self, p, args):
+        p = pd.DataFrame.from_dict(p)
+        df = p[p["occupation"] == args[0]]
+        return len(df), len(df[df["income50K"]==1])
 
     #reduce functions
     def __reduce_avg_salary(self, partitions):
@@ -211,8 +222,24 @@ class EDFS_SIMULATOR(object):
             r = r.append(partitions[i], ignore_index = True)
         return r
 
+    def __reduce_people_larger_than_50k(self, partitions):
+        r = partitions[0]
+        for i in range(1,len(partitions)):
+            r = r.append(partitions[i], ignore_index = True)
+        return r
 
-    #search functions
+    def __reduce_percent_50k(self, partitions):
+        l = 0
+        total = 0
+        for i in partitions:
+            l+=i[0]
+            total+=i[1]
+        if total > 0:
+            return total/l * 100
+        else:
+            return 0
+
+    #analytics functions
     def get_avg_salary(self, filePath, title):
         locations = self.getPartitionLocations(filePath)
         partitions = []
@@ -227,6 +254,19 @@ class EDFS_SIMULATOR(object):
         result = self.reduce(partitions, self.__reduce_avg_salary)
         print(f'{title} avg salary: {result}')
 
+    def get_percent_50k(self, filePath, occupation):
+        locations = self.getPartitionLocations(filePath)
+        partitions = []
+        for p in locations:
+            t = self.mapPartition(p, self.__get_percent_50k, [occupation])
+            if(t[1]>0):
+                print(f'Partition: {p}\n   {occupation} total num: {t[0]}   >50K num: {t[1]}   percentage: {t[1]/t[0] * 100}%')
+            else:
+                print(f'Partition: {p}\n   {occupation} total num: {t[0]}   >50K num: {t[1]}   percentage: 0%')
+            partitions.append(t)
+        result = self.reduce(partitions, self.__reduce_percent_50k)
+        print(f'{occupation} >50K Percentage: {result}%')
+    #search functions
     def get_job_with_salary(self, filePath, mi=0, ma=100000000):
         locations = self.getPartitionLocations(filePath)
         partitions = []
@@ -236,7 +276,16 @@ class EDFS_SIMULATOR(object):
             partitions.append(t)
         result = self.reduce(partitions, self.__reduce_job_with_salary)
         print(result)
-        
+
+    def get_people_larger_than_50k(self, filePath, args):
+        locations = self.getPartitionLocations(filePath)
+        partitions = []
+        for p in locations:
+            t = self.mapPartition(p, self.__get_people_larger_than_50k, args)
+            print(f'Partition: {p}\n   {t}')
+            partitions.append(t)
+        result = self.reduce(partitions, self.__reduce_people_larger_than_50k)
+        print(result)
 #------------------------   Task3   --------------------------
     def cd(self, dir):
         if(dir=='../'):
